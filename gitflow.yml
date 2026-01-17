@@ -1,0 +1,191 @@
+title: "GitFlow - Ground Truth Engineering Report"
+key: "gitflow"
+slug: "gitflow"
+name: "GitFlow"
+description: "GitFlow: The Ground Truth Report for CEOs, CTOs, and Product leaders—project-centric and multi-repo. AI reads the actual code diffs across your entire stack (frontend, backend, infra) and converts what really shipped into one unified, leadership-ready business + technical narrative (single email + PDF)."
+repo_url: "https://github.com/WaveAssist/GitFlow"
+repo_name: "GitFlow"
+tags:
+  - "ai"
+  - "engineering"
+  - "executive-reporting"
+  - "cross-stack"
+thumbnail: "/images/templates/gitflow.png"
+primary_image: "/images/templates/gitflow.png"
+badges:
+  - "AI Engineering Report"
+  - "Ground Truth"
+is_enabled: true
+is_primary: true
+is_premium: true
+is_public: true
+sort_order: 5
+version: "0.0.1"
+video_url: ""
+setup_time: "5 mins"
+success_rate: "94%"
+demo_url: ""
+input_blocks:
+  - key: "BASIC_SETUP"
+    markdown: |
+      You provide:
+      - Project name: `Acme Backend`
+      - GitHub repos (multi-repo): `owner/repo1, owner/repo2, owner/repo3`
+      - Schedule: **Weekly (default) or On-demand**
+  - key: "MODEL_SELECTION"
+    markdown: |
+      Optional:
+      - Model: `anthropic/claude-haiku-4.5` (default) or your chosen model
+  - key: "DELIVERY_PREFS"
+    markdown: |
+      Optional:
+      - Email: `leader@example.com`
+      - PDF attachment: **On by default**
+output_blocks:
+  - key: "GROUND_TRUTH_REPORT"
+    markdown: |
+      **Ground Truth Report (AI-generated from code diffs, multi-repo unified)**
+
+      **Summary**
+      Two-sentence executive summary based on what actually shipped in code, across all repos.
+
+      **Primary Updates**
+      Top 1-3 user-facing capabilities validated from diffs (no PR fluff), cross-stack when needed.
+
+      **Repository Deep Dive**
+      Per-repo status, tags, and 2-3 technical changes, with cross-repo linking when features span stacks.
+
+      **Poem**
+      A 4-line, tech-flavored poem capturing the week's tone.
+
+      **Stats**
+      Commits, contributors, total repos, active repos; PDF attached.
+features:
+  - icon: "code"
+    title: "Diff-First Accuracy"
+    desc: "Ignores PR titles and commit messages; reads the actual code diffs for zero-trust reporting."
+  - icon: "briefcase"
+    title: "Leadership-Ready"
+    desc: "Translates code changes into business and technical narratives for CEO, CTO, Product, and Marketing."
+  - icon: "layers"
+    title: "Cross-Stack Synthesis"
+    desc: "Multi-repo, project-centric: AI connects backend + frontend + infra into one unified product narrative."
+  - icon: "branch"
+    title: "Active Branch Focus"
+    desc: "Finds active branches via GraphQL, filters bots, and dedupes commits to reduce noise."
+  - icon: "filetext"
+    title: "Combined Email + PDF"
+    desc: "One weekly email with stats, business highlights, technical deep dive, and attached PDF."
+testimonials:
+  - quote: "Finally, a report I can forward to the board without rewriting. It's grounded in code, not wishful PR titles."
+    name: "Amelia R."
+    role: "CTO"
+  - quote: "I see exactly what shipped, mapped to user value, every week. Zero fluff."
+    name: "David K."
+    role: "Head of Product"
+  - quote: "Release notes are now accurate by default—because they're written from the diffs."
+    name: "Priya S."
+    role: "Marketing Lead"
+faqs:
+  - q: "What makes GitFlow different?"
+    a: "It reads the actual code diffs, not PR titles or commit messages, and produces AI-generated business + technical summaries from what really shipped."
+  - q: "How does it handle multiple repositories?"
+    a: "GitFlow is project-centric: AI synthesizes diffs across all your repos (frontend, backend, infra) into one unified product narrative, connecting cross-stack features automatically."
+  - q: "Do I need multiple emails?"
+    a: "No. GitFlow delivers one combined email plus a PDF attachment—perfect for CEO, CTO, Product, and Marketing audiences."
+  - q: "How often does it run?"
+    a: "Weekly by default (Monday 8:30 AM UTC), or on-demand if you trigger it. Each report covers the past 7 days of activity."
+  - q: "Which models are supported?"
+    a: "Default is Claude Haiku 4.5; you can configure other models via `model_name` (Claude Sonnet, Grok, Gemini, DeepSeek, GPT-5 Mini)."
+  - q: "How much does it cost?"
+    a: "It's free to start with $2 credits included. You only pay once credits expire—it's a pay-as-you-go model based on usage (0.3 credits per weekly run)."
+pricing:
+  unit: "Credits used per weekly run"
+  cost: "$0.3"
+pro_section:
+  badge: "GitFlow Pro"
+  title: "Enterprise-grade, audit-ready engineering intelligence."
+  subtitle: "Private deployments with custom models, delivered in 7 days."
+  highlight:
+    label: "Why customise"
+    title: "Compliance & control"
+    description: "Run GitFlow in your infrastructure with custom model policies, role-tailored outputs, and full audit trails—tuned to your leadership templates and compliance requirements."
+  cards:
+    - title: "Custom Model Policy"
+      description: "Pin models, set temperature/limits, and enforce data residency for compliance-sensitive environments."
+    - title: "Role-Tailored Outputs"
+      description: "Generate separate sections for CEO, CTO, Product, and Marketing from the same multi-repo diff corpus, each tuned to audience needs."
+    - title: "Security & Audit Trails"
+      description: "Full logging of inputs/outputs, PDF archiving, and compliance-ready reporting for enterprise governance."
+    - title: "Custom Branding"
+      description: "Your logo, colors, and headers in email and PDF reports, maintaining brand consistency across all communications."
+  cta:
+    label: "Request Custom Build"
+    url: "https://waveassist.io/contact"
+partners:
+  - icon: "/images/partners/openrouter.png"
+    name: "OpenRouter"
+  - icon: "/images/partners/openai.png"
+    name: "OpenAI"
+  - icon: "/images/partners/perplexity.png"
+    name: "Perplexity"
+  - icon: "/images/partners/github.png"
+    name: "GitHub"
+numbers:
+  - value: "7"
+    label: "Days of activity analyzed"
+  - value: "4"
+    label: "Sections per report"
+  - value: "1"
+    label: "Combined email each week"
+  - value: "5 mins"
+    label: "Setup time"
+  - value: "0.3"
+    label: "Credits per run"
+related_articles:
+  - title: "Why code diffs beat PR titles for engineering truth"
+    href: "/blog/gitflow-ground-truth-diffs"
+  - title: "How to brief executives with one weekly engineering email"
+    href: "/blog/gitflow-leadership-reporting"
+  - title: "Building audit-ready engineering reports with WaveAssist"
+    href: "/blog/waveassist-audit-ready-reports"
+related_assistants:
+  - title: "WaveContent"
+    href: "/assistants/wavecontent"
+    desc: "AI-powered content strategist with competitor benchmarking and SEO insights."
+  - title: "WavePredict"
+    href: "/assistants/wavepredict"
+    desc: "AI-powered stock price forecasts using technical signals, news, and analyst ratings."
+  - title: "WaveCrypto"
+    href: "/assistants/wavecrypto"
+    desc: "AI-powered cryptocurrency price forecasts using technical signals, news sentiment, fundamentals, and analyst ratings."
+seo:
+  title: "GitFlow | AI Ground Truth Engineering Report"
+  meta_description: "GitFlow turns actual code diffs across all your repos into a unified, leadership-ready business + technical report. One weekly AI-generated email + PDF, grounded in what really shipped. Project-centric, multi-repo synthesis for CEOs, CTOs, and Product leaders."
+  canonical: "https://waveassist.io/assistants/gitflow"
+  schema_type: "SoftwareApplication"
+  keywords: "AI engineering report, code diff analysis, GitFlow, executive engineering summary, audit-ready engineering, AI code reporting, multi-repo synthesis, cross-stack visibility, ground truth reporting"
+  og_title: "GitFlow: Ground Truth Engineering Reports from Code Diffs"
+  og_description: "Unified visibility across your entire stack: AI reads the diffs and delivers one business + technical report each week. Project-centric, multi-repo synthesis for leadership."
+  og_image: "https://waveassist.io/images/templates/gitflow/gitflow.png"
+  og_url: "https://waveassist.io/assistants/gitflow"
+  og_type: "website"
+  twitter_card: "summary_large_image"
+  twitter_title: "GitFlow — AI Ground Truth Engineering Report"
+  twitter_description: "AI reads your code diffs across all repos and ships one weekly business + technical report, email + PDF. The ground truth of your engineering week."
+  twitter_image: "https://waveassist.io/images/templates/gitflow/gitflow.png"
+  robots: "index, follow"
+  schema_additional: |
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "GitFlow",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0.3",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      }
+    }
