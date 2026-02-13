@@ -129,7 +129,8 @@ def build_combined_email(
                 tags = repo_context.get("tags", [])
                 tags_html = ""
                 if tags:
-                    tags_html = f"<div class='repo-tags'>{' '.join(f'<span class=\"tag\">{_esc(tag)}</span>' for tag in tags)}</div>"
+                    tag_spans = ' '.join(f'<span class="tag">{_esc(tag)}</span>' for tag in tags)
+                    tags_html = f"<div class='repo-tags'>{tag_spans}</div>"
                 
                 changes_list = _ul(technical_changes) if technical_changes else "<p class='muted'>No technical changes listed.</p>"
                 
