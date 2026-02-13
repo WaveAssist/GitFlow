@@ -1,4 +1,5 @@
 import requests
+import time
 import waveassist
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
@@ -70,6 +71,9 @@ def fetch_commit_diff(repo_path: str, sha: str, headers: dict) -> List[Dict[str,
     """Fetch file diffs for a specific commit."""
     url = f"https://api.github.com/repos/{repo_path}/commits/{sha}"
     response = requests.get(url, headers=headers)
+    
+    # Rate limiting: sleep between API calls
+    time.sleep(0.5)
     
     if response.status_code != 200:
         return []
@@ -385,10 +389,10 @@ def process_repository(
 
 
 # Main execution
-github_activity_data = waveassist.fetch_data("github_activity_data") or {}
-repository_contexts = waveassist.fetch_data("repository_contexts") or {}
-github_access_token = waveassist.fetch_data("github_access_token") or ""
-model_name = waveassist.fetch_data("model_name") or "anthropic/claude-haiku-4.5"
+github_activity_data = waveassist.fetch_data("github_activity_data", default={})
+repository_contexts = waveassist.fetch_data("repository_contexts", default={})
+github_access_token = waveassist.fetch_data("github_access_token", default="")
+model_name = waveassist.fetch_data("model_name", default="anthropic/claude-haiku-4.5")
 
 headers = {
     "Authorization": f"token {github_access_token}",
@@ -396,6 +400,10 @@ headers = {
 }
 
 repository_analyses = []
+if not isinstance(github_activity_data, dict):
+    github_activity_data = {}
+if not isinstance(repository_contexts, dict):
+    repository_contexts = {}
 
 for repo_path, activity_data in github_activity_data.items():
     print(f"🔍 Analyzing {repo_path}...")
@@ -413,7 +421,7 @@ for repo_path, activity_data in github_activity_data.items():
         
         repository_analyses.append(analysis)
         print(f"✅ Analysis complete for {repo_path}: {len(analysis['changes'])} changes identified")
-        
+
     except Exception as e:
         print(f"❌ Error analyzing {repo_path}: {e}")
         repository_analyses.append({
@@ -421,8 +429,9 @@ for repo_path, activity_data in github_activity_data.items():
             "changes": []
         })
 
-# Store analyses
-waveassist.store_data("repository_analyses", repository_analyses)
+    waveassist.store_data("repository_analyses", repository_analyses, data_type="json")
+
+# Store analyses (final store already done per-repo)
 
 total_changes = sum(len(a["changes"]) for a in repository_analyses)
 print(f"✅ Analysis complete: {total_changes} total changes across {len(repository_analyses)} repositories")

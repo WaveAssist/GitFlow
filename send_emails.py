@@ -32,7 +32,8 @@ def get_activity_summary(github_activity_data: Dict[str, Any]) -> Dict[str, Any]
     """Calculate activity summary statistics."""
     total_commits = 0
     contributors = set()
-    
+    if not isinstance(github_activity_data, dict):
+        return {"total_commits": 0, "contributor_count": 0}
     for repo_path, data in github_activity_data.items():
         commits = data.get("commits", [])
         
@@ -158,6 +159,13 @@ def build_combined_email(
                 + "</div>"
             )
     
+    report_period_html = ""
+    try:
+        if report_date_range and report_date_range.get("start_date_formatted"):
+            report_period_html = f"<div class='subtitle'>Report Period: {_esc(report_date_range.get('start_date_formatted', ''))} - {_esc(report_date_range.get('end_date_formatted', ''))}</div>"
+    except Exception:
+        report_period_html = ""
+
     html_body = f"""
     <html>
     <head>
@@ -235,16 +243,16 @@ def build_combined_email(
         <div class="container">
             <div class="header">
                 <h1>Weekly Update: {_esc(project_name)}</h1>
-                {f"<div class='subtitle'>Report Period: {_esc(report_date_range.get('start_date_formatted', ''))} - {_esc(report_date_range.get('end_date_formatted', ''))}</div>" if report_date_range and report_date_range.get('start_date_formatted') else ""}
+                {report_period_html}
             </div>
             
             <div class="stats-bar">
                 <div class="stat">
-                    <div class="stat-value">{activity_summary['total_commits']}</div>
+                    <div class="stat-value">{activity_summary.get('total_commits', 0)}</div>
                     <div class="stat-label">Commits</div>
                 </div>
                 <div class="stat">
-                    <div class="stat-value">{activity_summary['contributor_count']}</div>
+                    <div class="stat-value">{activity_summary.get('contributor_count', 0)}</div>
                     <div class="stat-label">Contributors</div>
                 </div>
                 <div class="stat">
@@ -284,30 +292,52 @@ def build_combined_email(
 
 
 # Main execution
-technical_report = waveassist.fetch_data("technical_report") or {}
-business_report = waveassist.fetch_data("business_report") or {}
-github_activity_data = waveassist.fetch_data("github_activity_data") or {}
-repository_contexts = waveassist.fetch_data("repository_contexts") or {}
-report_date_range = waveassist.fetch_data("report_date_range") or {}
-project_name = waveassist.fetch_data("project_name") or "Project"
-github_selected_resources = waveassist.fetch_data("github_selected_resources") or []
+technical_report = waveassist.fetch_data("technical_report", default={})
+business_report = waveassist.fetch_data("business_report", default={})
+github_activity_data = waveassist.fetch_data("github_activity_data", default={})
+repository_contexts = waveassist.fetch_data("repository_contexts", default={})
+report_date_range = waveassist.fetch_data("report_date_range", default={})
+project_name = waveassist.fetch_data("project_name", default="Project")
+github_selected_resources = waveassist.fetch_data("github_selected_resources", default=[])
 
 # Generate timestamp
 timestamp = datetime.now().strftime("%B %d, %Y")
 
+# Coerce types for upstream data
+if not isinstance(technical_report, dict):
+    technical_report = {}
+if not isinstance(business_report, dict):
+    business_report = {}
+if not isinstance(github_activity_data, dict):
+    github_activity_data = {}
+if not isinstance(repository_contexts, dict):
+    repository_contexts = {}
+if not isinstance(report_date_range, dict):
+    report_date_range = {}
+if not isinstance(github_selected_resources, list):
+    github_selected_resources = []
+project_name = str(project_name) if project_name is not None else "Project"
+
 # Get activity summary
 activity_summary = get_activity_summary(github_activity_data)
+total_commits_safe = activity_summary.get("total_commits", 0)
+contributor_count_safe = activity_summary.get("contributor_count", 0)
+try:
+    total_commits_int = int(total_commits_safe) if total_commits_safe is not None else 0
+except (TypeError, ValueError):
+    total_commits_int = 0
 
 # Check if there's anything to report
-has_activity = activity_summary["total_commits"] > 0
+has_activity = total_commits_int > 0
 
-if not has_activity:
-    # Send a simple "no activity" email
-    date_range_text = ""
-    if report_date_range and report_date_range.get('start_date_formatted'):
-        date_range_text = f"<p style='color: #6b7280; font-size: 12px; margin-top: 8px;'>Report Period: {_esc(report_date_range.get('start_date_formatted', ''))} - {_esc(report_date_range.get('end_date_formatted', ''))}</p>"
-    
-    no_activity_html = f"""
+try:
+    if not has_activity:
+        # Send a simple "no activity" email
+        date_range_text = ""
+        if report_date_range and report_date_range.get('start_date_formatted'):
+            date_range_text = f"<p style='color: #6b7280; font-size: 12px; margin-top: 8px;'>Report Period: {_esc(report_date_range.get('start_date_formatted', ''))} - {_esc(report_date_range.get('end_date_formatted', ''))}</p>"
+
+        no_activity_html = f"""
     <html>
     <head>
         <meta charset="utf-8" />
@@ -342,69 +372,110 @@ if not has_activity:
         </div>
     </body>
     </html>
-    """
-    
-    subject = f"GitFlow: {project_name} - No Activity This Week"
-    
-    # Generate PDF attachment
-    pdf_file, pdf_filename, pdf_error = generate_pdf_attachment(no_activity_html, project_name)
-    
-    waveassist.send_email(subject=subject, html_content=no_activity_html, attachment_file=pdf_file)
-    
+        """
+
+        subject = f"GitFlow: {project_name} - No Activity This Week"
+
+        # Generate PDF attachment
+        pdf_file, pdf_filename, pdf_error = generate_pdf_attachment(no_activity_html, project_name)
+
+        email_sent = waveassist.send_email(
+            subject=subject, html_content=no_activity_html, attachment_file=pdf_file, raise_on_failure=False
+        )
+        display_output = {
+            "title": subject,
+            "html_content": no_activity_html,
+            "status": "email_failed" if not email_sent else "success",
+            "pdf_attachment": {
+                "enabled": True,
+                "file_name": pdf_filename,
+                "generated": pdf_file is not None,
+                "error": pdf_error,
+            },
+        }
+        waveassist.store_data("display_output", display_output, run_based=True, data_type="json")
+        print("GitFlow: No activity email sent." if email_sent else "GitFlow: No activity email send failed.")
+
+    else:
+        # Validate reports before sending
+        business_report_valid = (
+            isinstance(business_report, dict) and
+            business_report.get("executive_summary") and
+            isinstance(business_report.get("shipped_features"), list)
+        )
+        
+        technical_report_valid = (
+            isinstance(technical_report, dict) and
+            isinstance(technical_report.get("repository_deep_dive"), list) and
+            isinstance(technical_report.get("poem"), list)
+        )
+        
+        if not business_report_valid or not technical_report_valid:
+            error_msg = "Reports were not generated successfully. "
+            if not business_report_valid:
+                error_msg += "Business report is missing or invalid. "
+            if not technical_report_valid:
+                error_msg += "Technical report is missing or invalid."
+            
+            fallback_html = f"<p>{_esc(error_msg)}</p><p>Please check the workflow logs for details.</p>"
+            display_output = {
+                "html_content": fallback_html,
+                "status": "report_validation_failed",
+                "error": error_msg,
+            }
+            waveassist.store_data("display_output", display_output, run_based=True, data_type="json")
+            print(f"GitFlow: Report validation failed - {error_msg}. Email not sent.")
+        else:
+            # Build and send combined email
+            print("Generating combined weekly update email...")
+            combined_html = build_combined_email(
+                business_report,
+                technical_report,
+                project_name,
+                activity_summary,
+                timestamp,
+                repository_contexts,
+                github_selected_resources,
+                report_date_range
+            )
+
+            subject = f"Weekly Update: {project_name}"
+
+            # Generate PDF attachment
+            pdf_file, pdf_filename, pdf_error = generate_pdf_attachment(combined_html, project_name)
+
+            print("GitFlow: Sending email with PDF attachment...")
+            email_sent = waveassist.send_email(
+                subject=subject, html_content=combined_html, attachment_file=pdf_file, raise_on_failure=False
+            )
+            print("Weekly update email sent." if email_sent else "Weekly update email send failed.")
+
+            display_output = {
+                "title": subject,
+                "html_content": combined_html,
+                "status": "email_failed" if not email_sent else "success",
+                "summary": {
+                    "commits": activity_summary.get("total_commits", 0),
+                    "contributors": activity_summary.get("contributor_count", 0),
+                },
+                "pdf_attachment": {
+                    "enabled": True,
+                    "file_name": pdf_filename,
+                    "generated": pdf_file is not None,
+                    "error": pdf_error,
+                },
+            }
+            waveassist.store_data("display_output", display_output, run_based=True, data_type="json")
+
+except Exception as e:
+    fallback_html = f"<p>Report generation failed: {_esc(str(e))}</p>"
     display_output = {
-        "title": subject,
-        "html_content": no_activity_html,
-        "status": "success",
-        "pdf_attachment": {
-            "enabled": True,
-            "file_name": pdf_filename,
-            "generated": pdf_file is not None,
-            "error": pdf_error,
-        },
+        "html_content": fallback_html,
+        "status": "email_build_failed",
+        "error": str(e),
     }
-    waveassist.store_data("display_output", display_output, run_based=True)
-    print("GitFlow: No activity email sent.")
-    
-else:
-    # Build and send combined email
-    print("Generating combined weekly update email...")
-    combined_html = build_combined_email(
-        business_report,
-        technical_report,
-        project_name,
-        activity_summary,
-        timestamp,
-        repository_contexts,
-        github_selected_resources,
-        report_date_range
-    )
-    
-    subject = f"Weekly Update: {project_name}"
-    
-    # Generate PDF attachment
-    pdf_file, pdf_filename, pdf_error = generate_pdf_attachment(combined_html, project_name)
-    
-    print("GitFlow: Sending email with PDF attachment...")
-    waveassist.send_email(subject=subject, html_content=combined_html, attachment_file=pdf_file)
-    print("Weekly update email sent.")
-    
-    # Store display output
-    display_output = {
-        "title": subject,
-        "html_content": combined_html,
-        "status": "success",
-        "summary": {
-            "commits": activity_summary["total_commits"],
-            "contributors": activity_summary["contributor_count"],
-        },
-        "pdf_attachment": {
-            "enabled": True,
-            "file_name": pdf_filename,
-            "generated": pdf_file is not None,
-            "error": pdf_error,
-        },
-    }
-    waveassist.store_data("display_output", display_output, run_based=True)
+    waveassist.store_data("display_output", display_output, run_based=True, data_type="json")
+    print(f"GitFlow: Email build failed: {e}. Email not sent.")
 
 print("GitFlow: Email generation completed.")
 

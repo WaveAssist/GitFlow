@@ -152,12 +152,12 @@ Guidelines:
 
 
 # Main execution
-repository_analyses = waveassist.fetch_data("repository_analyses") or []
-github_activity_data = waveassist.fetch_data("github_activity_data") or {}
-repository_contexts = waveassist.fetch_data("repository_contexts") or {}
-project_name = waveassist.fetch_data("project_name") or "Project"
-business_report_history = waveassist.fetch_data("business_report_history") or []
-model_name = waveassist.fetch_data("model_name") or "anthropic/claude-haiku-4.5"
+repository_analyses = waveassist.fetch_data("repository_analyses", default=[])
+github_activity_data = waveassist.fetch_data("github_activity_data", default={})
+repository_contexts = waveassist.fetch_data("repository_contexts", default={})
+project_name = waveassist.fetch_data("project_name", default="Project")
+business_report_history = waveassist.fetch_data("business_report_history", default=[])
+model_name = waveassist.fetch_data("model_name", default="anthropic/claude-haiku-4.5")
 
 # Check if there's any activity to report
 total_changes = sum(len(a.get("changes", [])) for a in repository_analyses)
@@ -168,7 +168,7 @@ if total_changes == 0:
         "executive_summary": f"No development activity was recorded for {project_name} this week.",
         "shipped_features": []
     }
-    waveassist.store_data("business_report", business_report)
+    waveassist.store_data("business_report", business_report, data_type="json")
     print("GitFlow: Business report generation completed (no activity).")
 else:
     # Build context
@@ -191,28 +191,28 @@ else:
     if result:
         business_report = result.model_dump(by_alias=True)
         
-        waveassist.store_data("business_report", business_report)
+        waveassist.store_data("business_report", business_report, data_type="json")
         print(f"✅ Business report generated")
 
         # Update business report history
         current_week = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        
+
         # Keep only last 1 week, then append current week (total: 2 weeks)
-        business_report_history = business_report_history[-1:]
-        business_report_history.append({
+        history_list = business_report_history if isinstance(business_report_history, list) else []
+        history_list = history_list[-1:]
+        history_list.append({
             "week": current_week,
             "report": business_report
         })
-        
-        waveassist.store_data("business_report_history", business_report_history)
-        
+        waveassist.store_data("business_report_history", history_list, data_type="json")
+
     else:
         print("⚠️ Failed to generate business report, using fallback")
         business_report = {
             "executive_summary": f"Development activity was recorded for {project_name} this week but report generation encountered an issue.",
             "shipped_features": []
         }
-        waveassist.store_data("business_report", business_report)
+        waveassist.store_data("business_report", business_report, data_type="json")
 
 print("GitFlow: Business report generation completed.")
 

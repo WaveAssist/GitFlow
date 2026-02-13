@@ -1,4 +1,5 @@
 import requests
+import time
 import waveassist
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -37,6 +38,9 @@ def get_file_content(repo_path: str, file_path: str, headers: dict) -> Optional[
     url = f"https://api.github.com/repos/{repo_path}/contents/{file_path}"
     response = requests.get(url, headers=headers)
     
+    # Rate limiting: sleep between API calls
+    time.sleep(0.5)
+    
     if response.status_code != 200:
         return None
     
@@ -55,6 +59,9 @@ def get_repo_tree(repo_path: str, headers: dict) -> List[str]:
     """Get list of all files in repository (top-level tree)."""
     url = f"https://api.github.com/repos/{repo_path}/git/trees/HEAD?recursive=1"
     response = requests.get(url, headers=headers)
+    
+    # Rate limiting: sleep between API calls
+    time.sleep(0.5)
     
     if response.status_code != 200:
         return []
@@ -151,12 +158,14 @@ Be concise and focus on the most important aspects."""
 
 
 # Main execution
-github_selected_resources = waveassist.fetch_data("github_selected_resources") or []
-github_access_token = waveassist.fetch_data("github_access_token") or ""
-model_name = waveassist.fetch_data("model_name") or "anthropic/claude-haiku-4.5"
+github_selected_resources = waveassist.fetch_data("github_selected_resources", default=[])
+github_access_token = waveassist.fetch_data("github_access_token", default="")
+model_name = waveassist.fetch_data("model_name", default="anthropic/claude-haiku-4.5")
 
 # Fetch existing repository contexts
-repository_contexts = waveassist.fetch_data("repository_contexts") or {}
+repository_contexts = waveassist.fetch_data("repository_contexts", default={})
+if not isinstance(repository_contexts, dict):
+    repository_contexts = {}
 
 headers = {
     "Authorization": f"token {github_access_token}",
@@ -165,28 +174,31 @@ headers = {
 
 new_contexts_added = False
 
+if not isinstance(github_selected_resources, list):
+    github_selected_resources = []
+
 for repo in github_selected_resources:
     repo_path = repo.get("id") if isinstance(repo, dict) else repo
-    
+
     if not repo_path:
         continue
-    
+
     # Skip if context already exists
     if repo_path in repository_contexts:
         print(f"✓ Context already exists for {repo_path}, skipping...")
         continue
-    
+
     print(f"📦 Fetching context for {repo_path}...")
-    
+
     try:
         # Get file tree
         file_list = get_repo_tree(repo_path, headers)
-        
+
         # Fetch key files
         readme_content = find_and_fetch_file(repo_path, README_PATTERNS, headers, file_list)
         requirements_content = find_and_fetch_file(repo_path, REQUIREMENTS_PATTERNS, headers, file_list)
         entry_point_content = find_and_fetch_file(repo_path, ENTRY_POINT_PATTERNS, headers, file_list)
-        
+
         # Generate context summary
         context = generate_context_summary(
             repo_path,
@@ -196,22 +208,24 @@ for repo in github_selected_resources:
             file_list,
             model_name
         )
-        
+
         if context:
             repository_contexts[repo_path] = context
             new_contexts_added = True
             print(f"✅ Generated context for {repo_path}")
             print(f"   Summary: {context.get('summary', 'N/A')[:100]}...")
             print(f"   Tags: {context.get('tags', [])}")
+        else:
+            repository_contexts[repo_path] = {"error": "Failed to generate context"}
 
-            
     except Exception as e:
         print(f"❌ Error fetching context for {repo_path}: {e}")
+        repository_contexts[repo_path] = {"error": str(e)}
+
+    waveassist.store_data("repository_contexts", repository_contexts, data_type="json")
 
 
-# Store updated contexts
 if new_contexts_added:
-    waveassist.store_data("repository_contexts", repository_contexts)
     print(f"✅ Stored repository contexts for {len(repository_contexts)} repositories")
 else:
     print("✓ All repository contexts already up to date")

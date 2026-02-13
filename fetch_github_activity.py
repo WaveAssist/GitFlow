@@ -1,4 +1,5 @@
 import requests
+import time
 import waveassist
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
@@ -88,6 +89,9 @@ def fetch_branches_with_dates(repo_path: str, headers: dict) -> List[Dict[str, s
             
             response = requests.post(graphql_url, headers=headers, json=payload)
             
+            # Rate limiting: sleep between API calls
+            time.sleep(0.5)
+            
             if response.status_code != 200:
                 print(f"⚠️ Failed to fetch branches via GraphQL: {response.status_code}")
                 break
@@ -149,58 +153,76 @@ def filter_active_branches(branches: List[Dict[str, str]], since: datetime) -> L
 
 
 def fetch_commits(repo_path: str, headers: dict, branch_name: str, since: datetime) -> List[Dict[str, Any]]:
-    """Fetch commits from a single branch using REST API."""
+    """Fetch commits from a single branch using REST API with pagination."""
     commits_url = f"https://api.github.com/repos/{repo_path}/commits"
     
-    params = {
-        "sha": branch_name,
-        "since": since.isoformat(),
-        "per_page": 100,  # Single request per branch, capped at 100 commits
-    }
+    commit_list = []
+    page = 1
+    per_page = 100
     
     try:
-        response = requests.get(commits_url, headers=headers, params=params)
-        
-        if response.status_code != 200:
-            print(f"   ⚠️ Failed to fetch commits from branch '{branch_name}': {response.status_code}")
-            return []
-        
-        commits = response.json()
-        if not commits:
-            return []
-        
-        commit_list = []
-        
-        for commit in commits:
-            sha = commit.get("sha", "")
-            
-            # Skip commits with empty SHA
-            if not sha:
-                continue
-            
-            # Filter out bot commits
-            author = commit.get("author") or {}
-            committer = commit.get("committer") or {}
-            commit_data = commit.get("commit", {})
-            
-            if is_bot_user(author) or is_bot_user(committer):
-                continue
-            
-            # Extract commit info
-            commit_info = {
-                "sha": sha,
-                "message": commit_data.get("message", ""),
-                "author": author.get("login") if author else commit_data.get("author", {}).get("name", "Unknown"),
-                "timestamp": commit_data.get("author", {}).get("date", ""),
-                "url": commit.get("html_url", ""),
+        while True:
+            params = {
+                "sha": branch_name,
+                "since": since.isoformat(),
+                "per_page": per_page,
+                "page": page,
             }
-            commit_list.append(commit_info)
+            
+            response = requests.get(commits_url, headers=headers, params=params)
+            
+            # Rate limiting: sleep between API calls
+            time.sleep(0.5)
+            
+            if response.status_code != 200:
+                print(f"   ⚠️ Failed to fetch commits from branch '{branch_name}' page {page}: {response.status_code}")
+                break
+            
+            commits = response.json()
+            if not commits:
+                break
+            
+            for commit in commits:
+                sha = commit.get("sha", "")
+                
+                # Skip commits with empty SHA
+                if not sha:
+                    continue
+                
+                # Filter out bot commits
+                author = commit.get("author") or {}
+                committer = commit.get("committer") or {}
+                commit_data = commit.get("commit", {})
+                
+                if is_bot_user(author) or is_bot_user(committer):
+                    continue
+                
+                # Extract commit info
+                commit_info = {
+                    "sha": sha,
+                    "message": commit_data.get("message", ""),
+                    "author": author.get("login") if author else commit_data.get("author", {}).get("name", "Unknown"),
+                    "timestamp": commit_data.get("author", {}).get("date", ""),
+                    "url": commit.get("html_url", ""),
+                }
+                commit_list.append(commit_info)
+            
+            # Check if there are more pages (if we got fewer than per_page, we're done)
+            if len(commits) < per_page:
+                break
+            
+            page += 1
+            
+            # Safety limit: prevent excessive pagination
+            if page > 10:  # Max 10 pages = 1,000 commits per branch
+                print(f"   ⚠️ Reached commit pagination limit (10 pages) for branch '{branch_name}'")
+                break
         
         return commit_list
         
     except Exception as e:
         print(f"   ⚠️ Error fetching commits from branch '{branch_name}': {e}")
-        return []
+        return commit_list  # Return what we've collected so far
 
 
 def fetch_pull_requests(repo_path: str, headers: dict, since: datetime) -> List[Dict[str, Any]]:
@@ -219,6 +241,10 @@ def fetch_pull_requests(repo_path: str, headers: dict, since: datetime) -> List[
         }
         
         response = requests.get(pr_url, headers=headers, params=params)
+        
+        # Rate limiting: sleep between API calls
+        time.sleep(0.5)
+        
         if response.status_code != 200:
             continue
         
@@ -230,24 +256,51 @@ def fetch_pull_requests(repo_path: str, headers: dict, since: datetime) -> List[
                 if is_bot_user(user):
                     continue
                 
+                # Check created_at, merged_at, and updated_at
                 created_at = pr.get("created_at", "")
-                                
+                merged_at = pr.get("merged_at") or ""
+                updated_at = pr.get("updated_at", "")
+                
+                # Include PR if created, merged, or updated within the time window
+                should_include = False
+                
                 if created_at:
                     try:
                         created_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-                        if created_dt < since:
-                            continue
+                        if created_dt >= since:
+                            should_include = True
                     except:
                         pass
+                
+                if not should_include and merged_at:
+                    try:
+                        merged_dt = datetime.fromisoformat(merged_at.replace("Z", "+00:00"))
+                        if merged_dt >= since:
+                            should_include = True
+                    except:
+                        pass
+                
+                if not should_include and updated_at:
+                    try:
+                        updated_dt = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+                        if updated_dt >= since:
+                            should_include = True
+                    except:
+                        pass
+                
+                if not should_include:
+                    continue
                 
                 pr_info = {
                     "number": pr.get("number"),
                     "title": pr.get("title", ""),
                     "description": pr.get("body", "") or "",
-                    "status": "open",
+                    "status": state,
                     "author": user.get("login", "Unknown"),
                     "timestamp": pr.get("created_at", ""),
                     "created_at": created_at,
+                    "merged_at": merged_at,
+                    "updated_at": updated_at,
                     "url": pr.get("html_url", ""),
                     "head_sha": pr.get("head", {}).get("sha", ""),
                     "base_branch": pr.get("base", {}).get("ref", ""),
@@ -260,8 +313,8 @@ def fetch_pull_requests(repo_path: str, headers: dict, since: datetime) -> List[
 
 
 # Main execution
-github_selected_resources = waveassist.fetch_data("github_selected_resources") or []
-github_access_token = waveassist.fetch_data("github_access_token") or ""
+github_selected_resources = waveassist.fetch_data("github_selected_resources", default=[])
+github_access_token = waveassist.fetch_data("github_access_token", default="")
 
 headers = {
     "Authorization": f"token {github_access_token}",
@@ -274,6 +327,8 @@ since = end_date - timedelta(days=DAYS_TO_FETCH)
 start_date = since
 
 github_activity_data = {}
+if not isinstance(github_selected_resources, list):
+    github_selected_resources = []
 
 for repo in github_selected_resources:
     repo_path = repo.get("id") if isinstance(repo, dict) else repo
@@ -327,7 +382,7 @@ for repo in github_selected_resources:
         }
         
         print(f"✅ Fetched activity for {repo_path}")
-        
+
     except Exception as e:
         print(f"❌ Error fetching activity for {repo_path}: {e}")
         github_activity_data[repo_path] = {
@@ -335,8 +390,7 @@ for repo in github_selected_resources:
             "pull_requests": [],
         }
 
-# Store activity data
-waveassist.store_data("github_activity_data", github_activity_data)
+    waveassist.store_data("github_activity_data", github_activity_data, data_type="json")
 
 # Store report date range for email display
 report_date_range = {
@@ -345,7 +399,7 @@ report_date_range = {
     "start_date_formatted": start_date.strftime("%B %d, %Y"),
     "end_date_formatted": end_date.strftime("%B %d, %Y"),
 }
-waveassist.store_data("report_date_range", report_date_range)
+waveassist.store_data("report_date_range", report_date_range, data_type="json")
 
 # Calculate totals for logging
 total_commits = sum(len(data["commits"]) for data in github_activity_data.values())

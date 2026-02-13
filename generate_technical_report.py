@@ -160,11 +160,11 @@ Create a repository-by-repository technical deep dive with the following structu
 
 
 # Main execution
-repository_analyses = waveassist.fetch_data("repository_analyses") or []
-repository_contexts = waveassist.fetch_data("repository_contexts") or {}
-project_name = waveassist.fetch_data("project_name") or "Project"
-business_report = waveassist.fetch_data("business_report") or {}
-model_name = waveassist.fetch_data("model_name") or "anthropic/claude-haiku-4.5"
+repository_analyses = waveassist.fetch_data("repository_analyses", default=[])
+repository_contexts = waveassist.fetch_data("repository_contexts", default={})
+project_name = waveassist.fetch_data("project_name", default="Project")
+business_report = waveassist.fetch_data("business_report", default={})
+model_name = waveassist.fetch_data("model_name", default="anthropic/claude-haiku-4.5")
 
 # Check if there's any activity to report
 total_changes = sum(len(a.get("changes", [])) for a in repository_analyses)
@@ -180,7 +180,7 @@ if total_changes == 0:
             "Calm before velocity, waiting for ideas to spark"
         ]
     }
-    waveassist.store_data("technical_report", technical_report)
+    waveassist.store_data("technical_report", technical_report, data_type="json")
     print("GitFlow: Technical report generation completed (no activity).")
 else:
     # Build context
@@ -203,9 +203,9 @@ else:
     if result:
         technical_report = result.model_dump(by_alias=True)
         
-        waveassist.store_data("technical_report", technical_report)
+        waveassist.store_data("technical_report", technical_report, data_type="json")
         print(f"✅ Technical report generated")
-        
+
     else:
         print("⚠️ Failed to generate technical report, using fallback")
         technical_report = {
@@ -217,7 +217,7 @@ else:
                 "We will retry soon, momentum stays in motion"
             ]
         }
-        waveassist.store_data("technical_report", technical_report)
+        waveassist.store_data("technical_report", technical_report, data_type="json")
 
 print("GitFlow: Technical report generation completed.")
 
